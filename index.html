@@ -4,7 +4,7 @@
     <!--Import Google Icon Font-->
     <!--<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">-->
     <!--Import materialize.css-->
-    <!--<link type="text/css" rel="stylesheet" href="css/materialize.min.css"  media="screen,projection"/>-->
+    <link type="text/css" rel="stylesheet" href="css/materialize.min.css"  media="screen,projection"/>
 
     <!--Let browser know website is optimized for mobile-->
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -19,7 +19,7 @@
         }
 
         fieldset {
-            width: 20%;
+            width: 30%;
             height: 100%;
             float: left;
         }
@@ -30,12 +30,15 @@
 <body>
 <h1>Finding the line of best fit</h1>
 <div id="app">
-    <fieldset>
-        <legend>Modify the line:</legend>
+    <fieldset class = "tools">
+        <legend>Line Parameters</legend>
         <label for="beta_0">Intercept</label>
         <input type="number" id="beta_0" placeholder="Intercept" step="0.1" class="line-param" value="0.4"/>
         <label for="beta_1">Slope</label>
         <input type="number" id="beta_1" placeholder="Slope" step="0.1" class="line-param" value="-.2"/>
+        <label>Show Squares</label>
+        <div class = "switch"><label>Off<input type = "checkbox" />
+            <span class = "lever"></span>On</label></div>
     </fieldset>
     <div id="scatter"></div>
 </div>
@@ -203,8 +206,8 @@
     }
 
     function squareY(d) {
-        var boundary = (yScale.domain()[1] + yScale.domain()[0]) / 2;
-        var y = gety(d);
+        let boundary = yHat(getLineParams(), getx(d));
+        let y = gety(d);
         if (y > boundary) {
             return yScale(y)
         }
@@ -236,6 +239,12 @@
             .attr("fill", "#13294b")
             .attr("stroke", "#13294b")
             .attr("fill-opacity", 0.2);
+    }
+
+    function toggleSquares() {
+        //todo this
+        svg.selectAll("rect")
+
     }
 
 
