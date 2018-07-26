@@ -57,10 +57,8 @@
     <div class="col l3 m3 s12">
         <div class="card-panel" id="instructions">
             <h3>Instructions</h3>
-            <p>Change the slope and intercept to try to fit the line to the data.</p>
-            <p>When you think you've got it, click <em>Solve</em> to see how close you were to the least squares
-                solution.</p>
-            <p>To learn more about <em>Least Squares</em>, click the below.</p>
+            <div id="instruction-text">
+            </div>
             <button id="next-button" class="btn waves-effect waves-teal teal white-text">Next</button>
         </div>
     </div>
@@ -78,6 +76,19 @@
     var xMax = 10;
     var numDataPoints = 20;
     var sigma = 2;
+    var currentSlide = 0;
+    var instructionText = {
+        0:
+            ["Change the slope and intercept to try to fit the line to the data.",
+                "When you think you've got it, click \"Solve\" to see how close you were to the least squares solution.",
+                "To learn more about Least Squares, click \"Next\" below."],
+        1: ["The method of Least Squares works by finding the line that minimizes the sum of the squares of the residuals.",
+            "That sounds complicated, but there is a simple geometric interpretation.",
+            "Click \"Show Squares\" to see it. The least-squares fit is the line that makes average square size the smallest.",
+            "Change the line parameters and compare them with the optimal solution to see how changing the line affects the squared residuals.",
+            "Click \"Next\" to see how outliers affect the least squares fit."]
+    };
+
     randomCoef = d3.randomUniform(-2, 2);
 
     // var lineParams = {beta_0: 2, beta_1: -.5}
@@ -294,7 +305,7 @@
     d3.select('#toggle-squares')
         .on("change", function () {
             toggleSquares();
-        })
+        });
 
     d3.select("#solve")
         .on("click", function () {
@@ -322,19 +333,27 @@
                 updateSquares();
             }
         );
-
-    function nextSlide() {
-        d3.select("#toggle-squares")
-            .attr('disabled', null);
-
-        d3.select("#instructions")
+    
+    function writeInstructions() {
+        let instructions = instructionText[currentSlide];
+        d3.select("#instruction-text")
             .selectAll("p")
-            .remove()
-        d3.select("#instructions")
-            .select("h3")
-            .append("p")
-            .text("hello testing")
-        ;
+            .remove();
+        for (let i = 0; i < instructions.length; i++) {
+            d3.select("#instruction-text")
+                .append("p")
+                .text(instructions[i])
+        }
+        
+    }
+    writeInstructions();
+    function nextSlide() {
+        currentSlide += 1;
+        writeInstructions();
+        if (currentSlide == 1) {
+            d3.select("#toggle-squares")
+                .attr('disabled', null);
+        }
     }
 
     d3.select("#next-button")
