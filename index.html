@@ -4,7 +4,7 @@
     <!--Import Google Icon Font-->
     <!--<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">-->
     <!--Import materialize.css-->
-    <link type="text/css" rel="stylesheet" href="css/materialize.min.css"  media="screen,projection"/>
+    <link type="text/css" rel="stylesheet" href="css/materialize.min.css" media="screen,projection"/>
 
     <!--Let browser know website is optimized for mobile-->
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -29,29 +29,41 @@
 
 <body>
 <h1>Finding the line of best fit</h1>
-<div id="app">
-    <fieldset class = "tools">
-        <legend>Line Parameters</legend>
-        <label for="beta_0">Intercept</label>
-        <input type="number" id="beta_0" placeholder="Intercept" step="0.1" class="line-param" value="0.4"/>
-        <label for="beta_1">Slope</label>
-        <input type="number" id="beta_1" placeholder="Slope" step="0.1" class="line-param" value="-.2"/>
-        <label>Show Squares</label>
-        <div class = "switch"><label>Off<input type = "checkbox" />
-            <span class = "lever"></span>On</label></div>
-    </fieldset>
-    <div id="scatter"></div>
-</div>
-<div class="info">
-    <h2>Explanation</h2>
-    <p>Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Vestibulum tortor
-        quam, feugiat vitae, ultricies eget, tempor sit amet, ante. Donec eu libero sit amet quam egestas semper. Aenean
-        ultricies mi vitae est. Mauris placerat eleifend leo. Quisque sit amet est et sapien ullamcorper pharetra.
-        Vestibulum erat wisi, condimentum sed, commodo vitae, ornare sit amet, wisi. Aenean fermentum, elit eget
-        tincidunt condimentum, eros ipsum rutrum orci, sagittis tempus lacus enim ac dui. Donec non enim in turpis
-        pulvinar facilisis. Ut felis. Praesent dapibus, neque id cursus faucibus, tortor neque egestas augue, eu
-        vulputate magna eros eu erat. Aliquam erat volutpat. Nam dui mi, tincidunt quis, accumsan porttitor, facilisis
-        luctus, metus</p></pre>
+<div class="row">
+    <div class="col">
+        <div class="card-panel">
+            <div class="row"><label for="beta_0">Intercept</label>
+                <input type="number" id="beta_0" placeholder="Intercept" step="0.1" class="line-param" value="0.4"/>
+            </div>
+            <div class="row"><label for="beta_1">Slope</label>
+                <input type="number" id="beta_1" placeholder="Slope" step="0.1" class="line-param" value="-.2"/>
+            </div>
+            <label>Show Squares</label>
+            <div class="row">
+                <div class="switch"><label>Off<input type="checkbox" id="toggle-squares" disabled/>
+                    <span class="lever"></span>On</label></div>
+            </div>
+            <div class="row">
+                <button id="solve" class="btn waves-effect waves-green">Solve</button>
+            </div>
+            <div class="row">
+                <button id="new-data" class="btn waves-effect waves-orange deep-orange">New Dataset</button>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div id="scatter" class="card-panel"></div>
+    </div>
+    <div class="col l3 m3 s12">
+        <div class="card-panel" id="instructions">
+            <h3>Instructions</h3>
+            <p>Change the slope and intercept to try to fit the line to the data.</p>
+            <p>When you think you've got it, click <em>Solve</em> to see how close you were to the least squares
+                solution.</p>
+            <p>To learn more about <em>Least Squares</em>, click the below.</p>
+            <button id="next-button" class="btn waves-effect waves-teal teal white-text">Next</button>
+        </div>
+    </div>
 </div>
 <!--JavaScript at end of body for optimized loading-->
 <script type="text/javascript" src="js/materialize.min.js"></script>
@@ -65,9 +77,12 @@
     var xMin = -10;
     var xMax = 10;
     var numDataPoints = 20;
+    var sigma = 2;
+    randomCoef = d3.randomUniform(-2, 2);
+
     // var lineParams = {beta_0: 2, beta_1: -.5}
 
-    randomData = function (numDataPoints, beta_0 = 0, beta_1 = 1, sigma = 1) {
+    randomData = function (numDataPoints, beta_0 = 0, beta_1 = 1, sigma = window.sigma) {
         ds = [];
         var xdist = d3.randomUniform(xMin, xMax);
         var eps = d3.randomNormal(0, sigma);
@@ -77,9 +92,9 @@
             ds.push([x, y]);
         }
         return ds;
-    }
+    };
 
-    var ds = randomData(numDataPoints, 0, -1, 2);
+    var ds = randomData(numDataPoints, randomCoef(), randomCoef(), 2);
 
     function getx(d) {
         return d[0];
@@ -90,11 +105,10 @@
     }
 
 
-    // take a whole datapoint and return the xscale
     var xScale = d3.scaleLinear()
         .domain([d3.min(ds, getx), d3.max(ds, getx)])
         .range([padding + axispadding, w - padding]);
-    // take a whole data point and return the y scale
+
     var yScale = d3.scaleLinear()
         .domain([d3.min(ds, gety), d3.max(ds, gety)])
         .range([h - padding - axispadding, padding]);
@@ -179,30 +193,54 @@
         .on("change", function () {
             updateLine();
             updateSquares();
-        })
+        });
 
     function yHat(lineParams, x) {
-        var yh = lineParams.beta_0 + lineParams.beta_1 * x;
-        return yh;
+        return lineParams.beta_0 + lineParams.beta_1 * x;
     }
 
     function squareWidth(d) {
-        var lineParams = getLineParams();
-        var x = getx(d);
-        var y = gety(d);
-        var yh = yHat(lineParams, x);
+        let lineParams = getLineParams();
+        let x = getx(d);
+        let y = gety(d);
+        let yh = yHat(lineParams, x);
         return Math.abs(yScale(y) - yScale(yh))
     };
 
     function squareX(d) {
-        var boundary = (xScale.domain()[1] + xScale.domain()[0]) / 2;
-        var x = getx(d);
+        let boundary = (xScale.domain()[1] + xScale.domain()[0]) / 2;
+        let x = getx(d);
         if (x < boundary) {
             return xScale(x)
         }
         else {
             return xScale(x) - squareWidth(d)
         }
+    }
+
+    function leastSquares(dataset) {
+        // finds the least squares solution
+        let X = [];
+        let Y = [];
+        for (let i = 0; i < dataset.length; i++) {
+            X.push(getx(dataset[i]));
+            Y.push(gety(dataset[i]));
+        }
+        let X_bar = d3.mean(X);
+        let Y_bar = d3.mean(Y);
+
+        let Sxy = 0;
+        let Sxx = 0;
+        for (let i = 0; i < dataset.length; i++) {
+            let d = dataset[i];
+            Sxy += (getx(d) - X_bar) * (gety(d) - Y_bar);
+            Sxx += (getx(d) - X_bar) ** 2;
+        }
+
+        let beta_1 = Sxy / Sxx;
+        let beta_0 = Y_bar - beta_1 * X_bar;
+
+        return {beta_0: beta_0, beta_1: beta_1}
     }
 
     function squareY(d) {
@@ -227,10 +265,12 @@
         .attr("width", squareWidth)
         .attr("fill", "#13294b")
         .attr("stroke", "#13294b")
-        .attr("fill-opacity", 0.2);
+        .attr("fill-opacity", 0.2)
+        .attr("opacity", 0); // don't draw them till they're asked for.
 
     function updateSquares() {
         svg.selectAll("rect")
+            .data(ds)
             .transition()
             .attr("x", squareX)
             .attr("y", squareY)
@@ -242,10 +282,63 @@
     }
 
     function toggleSquares() {
-        //todo this
+        let toggle = d3.select("#toggle-squares")
+            .property("checked");
         svg.selectAll("rect")
-
+            .transition()
+            .attr("opacity", function () {
+                return toggle ? 1 : 0;
+            })
     }
+
+    d3.select('#toggle-squares')
+        .on("change", function () {
+            toggleSquares();
+        })
+
+    d3.select("#solve")
+        .on("click", function () {
+            let ls = leastSquares(ds);
+            document.getElementById('beta_0').value = ls.beta_0;
+            document.getElementById('beta_1').value = ls.beta_1;
+            updateLine();
+            updateSquares();
+        });
+
+    d3.select("#new-data")
+        .on("click", function () {
+                ds = randomData(numDataPoints, randomCoef(), randomCoef());
+                svg.selectAll('circle')
+                    .data(ds)
+                    .transition()
+                    .attr("cx", function (d) {
+                        return xScale(getx(d))
+                    })
+                    .attr("cy", function (d) {
+                        return yScale(gety(d))
+                    })
+                    .attr("class", "data-point")
+                    .attr("r", 3);
+                updateSquares();
+            }
+        );
+
+    function nextSlide() {
+        d3.select("#toggle-squares")
+            .attr('disabled', null);
+
+        d3.select("#instructions")
+            .selectAll("p")
+            .remove()
+        d3.select("#instructions")
+            .select("h3")
+            .append("p")
+            .text("hello testing")
+        ;
+    }
+
+    d3.select("#next-button")
+        .on("click", nextSlide);
 
 
 </script>
