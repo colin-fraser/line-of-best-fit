@@ -9,19 +9,21 @@
     <!--Let browser know website is optimized for mobile-->
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <style>
-        .info {
-            float: right;
-        }
-
-        #app {
-            float: left;
-            width: 50%;
-        }
 
         fieldset {
             width: 30%;
             height: 100%;
             float: left;
+        }
+
+        .data-point {
+            fill: #13294b;
+            r: 6
+        }
+
+        .active {
+            fill: #E84A27;
+            r: 10;
         }
 
     </style>
@@ -46,15 +48,15 @@
             <div class="row">
                 <button id="solve" class="btn waves-effect waves-green">Solve</button>
             </div>
-            <div class="row">
-                <button id="new-data" class="btn waves-effect waves-orange deep-orange">New Dataset</button>
-            </div>
+            <!--<div class="row">-->
+                <!--<button id="new-data" class="btn waves-effect waves-orange deep-orange">New Dataset</button>-->
+            <!--</div>-->
         </div>
     </div>
     <div class="col">
         <div id="scatter" class="card-panel"></div>
     </div>
-    <div class="col l3 m3 s12">
+    <div class="col l4 m3 s12">
         <div class="card-panel" id="instructions">
             <h3>Instructions</h3>
             <div id="instruction-text">
@@ -63,9 +65,24 @@
         </div>
     </div>
 </div>
+<div class="row">
+    <div class="col m6 l6 s12">
+    <h3>About this visualization.</h3>
+        <p>This is my submission for the final project of CS498: Data Visualization at the University of Illinois at Urbana-Champagne.</p>
+        <p>The goal of this visualization is to provide an intuitive link between the geometric problem of finding a line of best fit, and the algebraic problem of minimizing least squares. I teach a class on statistics at a local night school and I find that my students often have a hard time making the connection between these two domains—visualizing what "least squares" means in geometric terms.</p>
+        <h4>Scenes</h4>
+        <p>The narrative is implemented in three scenes. In the first scene, the user is instructed to use the slope and intercept inputs to make a line of best fit. Clicking the Solve button adjusts the line to the least squares solution. An animated transition helps to visually convey the distance from the user's guess to the least-squares solution.</p>
+        <p>In the second scene, the user gains access to the "Show Squares" toggle. When turned on, squares are drawn on the canvas with length equal to the distance between the data point and the current line. The user is prompted to try playing with the line parameters to see how the squared residuals are affected. The least-squares line is the line which minimizes the size of the average square.</p>
+        <p>Finally, the third scene instructs the user to add his or her own outliers to the dataset by dragging the data points around the canvas. This is meant to demonstrate how outliers affect the sum of squares. Large outliers will have large effects on the sum of squares since the area of the square scales quadratically. The user is also prompted to pay attention to how the position of outliers along the x-axis affects the least squares solution. Points that take on extreme x-values have higher leverage than those closer to the mean x-value, which gives them a larger influence on the slope of the regression line. This can be seen by moving a few points to a corner of the plot opposite the ends of the line and clicking "Solve".</p>
+        <h4>Triggers and Parameters</h4>
+        <p>The main narrative trigger for the presentation is the "Next" button. Clicking the "Next" button changes the instructions card, and also enables subsequent parts of the presentation such as the "Show Squares" switch. The input boxes for Slope and Intercept also act as triggers, with the line automatically updating to match the parameters specified within. The "Show Squares" switch reveals the squared residuals as actual geometric squares. Care was taken to ensure that the squares are plotted nicely, so that the data point always appears on the outside corner of the square, regardless of where the square is drawn on the canvas. The show-squares toggle and input boxes also act as parameters for the visualization, controlling the shapes of what is shown on the screen. Finally, the points themselves act as both triggers and parameters for the visualization.
+
+    </p>
+    </div>
+</div>
 <!--JavaScript at end of body for optimized loading-->
 <script type="text/javascript" src="js/materialize.min.js"></script>
-<script type="text/javascript" src="js/d3.js"></script>
+<script src="//d3js.org/d3.v4.min.js"></script>
 <script type="text/javascript">
 
     var w = 400;
@@ -77,6 +94,7 @@
     var numDataPoints = 20;
     var sigma = 2;
     var currentSlide = 0;
+    numSlides = 3;
     var instructionText = {
         0:
             ["Change the slope and intercept to try to fit the line to the data.",
@@ -86,7 +104,10 @@
             "That sounds complicated, but there is a simple geometric interpretation.",
             "Click \"Show Squares\" to see it. The least-squares fit is the line that makes average square size the smallest.",
             "Change the line parameters and compare them with the optimal solution to see how changing the line affects the squared residuals.",
-            "Click \"Next\" to see how outliers affect the least squares fit."]
+            "Click \"Next\" to see how outliers affect the least squares fit."],
+        2: ["Click and drag a few of the data points away from the group to see how outliers affect the least squares fit.",
+        "Pay attention to where along the x-axis you place your outliers. Do outliers along the extreme points of the x-axis affect the least-squares fit differently from outliers in the middle of the x-axis?",
+        "Points at the extreme values of the x-range are said to have high \"leverage\". Why do you think that name makes sense?"]
     };
 
     randomCoef = d3.randomUniform(-2, 2);
@@ -105,6 +126,25 @@
         return ds;
     };
 
+    var drag = d3.drag()
+        .on("start", dragstarted)
+        .on("drag", function(d) {
+            d3.select(this)
+                .attr("cx", d3.event.x)
+                .attr("cy", d3.event.y)
+            d[0] = xScale.invert(d3.event.x)
+            d[1] = yScale.invert(d3.event.y)
+        })
+        .on("end", function(d) {
+            d3.select(this)
+                .classed("active", false)
+            updateSquares()
+        });
+
+    function dragstarted(d) {
+        d3.select(this).raise().classed("active", true);
+    }
+
     var ds = randomData(numDataPoints, randomCoef(), randomCoef(), 2);
 
     function getx(d) {
@@ -115,6 +155,20 @@
         return d[1];
     }
 
+    function addOutlier() {
+        ds.push([0,0]);
+        svg.selectAll('circle')
+            .data(ds)
+            .enter()
+            .append("circle")
+            .attr("id", "outlier")
+            .attr("cx", function (d) {
+                return xScale(getx(d))
+            })
+            .attr("cy", function (d) {
+                return yScale(gety(d))
+            })
+    }
 
     var xScale = d3.scaleLinear()
         .domain([d3.min(ds, getx), d3.max(ds, getx)])
@@ -151,6 +205,7 @@
         .attr("transform", "translate(" + padding + ", 0)")
         .call(yAxis);
 
+    // draw the circles
     svg.selectAll("circle")
         .data(ds)
         .enter()
@@ -162,7 +217,7 @@
             return yScale(gety(d))
         })
         .attr("class", "data-point")
-        .attr("r", 3);
+        .call(drag);
 
     var line = d3.line()
         .x(function (d) {
@@ -178,9 +233,10 @@
         .attr("id", "line-of-best-fit")
         .attr("d", line)
         .attr("fill", "none")
-        .attr("stroke-width", 2)
+        .attr("stroke-width", 5)
         .attr("stroke", "red")
-        .attr("stroke-dasharray", 4);
+        .attr("stroke-dasharray", 9)
+        .raise();
 
     function getLineParams() {
         return {
@@ -279,6 +335,9 @@
         .attr("fill-opacity", 0.2)
         .attr("opacity", 0); // don't draw them till they're asked for.
 
+    svg.selectAll("circle")
+        .raise();
+
     function updateSquares() {
         svg.selectAll("rect")
             .data(ds)
@@ -354,10 +413,19 @@
             d3.select("#toggle-squares")
                 .attr('disabled', null);
         }
+        if (currentSlide === numSlides - 1) {
+            d3.select("#next-button")
+                .remove();
+        }
     }
+
 
     d3.select("#next-button")
         .on("click", nextSlide);
+
+
+
+
 
 
 </script>
